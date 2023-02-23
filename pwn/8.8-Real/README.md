@@ -6,13 +6,13 @@ pero solo una es valida en caso de que no tengas acceso al binario, y este esté
 Comenzamos ejecutando el binario para ver de que trata. En este caso ilustra un menu con 6 opcines a elegir: \
 ![Menu](images/menu.png "Menu")
 
-Al crear un usuario nos pregunta tres cosas, un index, un amaño y un username.
+Al crear un usuario nos pregunta tres cosas, un index, un tamaño y un username.
 El index es para crear una lista de varios usuarios, cada uno con sus contraseñas pertenecientes, el username no es mas que un string simple, pero pedir el tamaño es algo sospechoso.
 
 
-Si deduciste bien puedes intuir que el tamaño es la cantidad de bytes que pasaran de tu string username a la memoria, ojo con esto.
+Si deduciste bien puedes intuir que el tamaño es la cantidad de bytes que pasaran de tu string username a la memoria, ojo con esto, ya que es extraño que un programa te solicite la cantidad de bytes que quieras almacenar en memoria.
 
-Hagamos un poco de ingeneria reversa, veamos que hay en el main:
+Hagamos un poco de ingeneria reversa al binario, veamos que hay en el main:
 ```
 
 void main(void)
@@ -66,7 +66,9 @@ void main(void)
 
 Muy probablemente no te aparecera al 100% de como aparece ahi, ya que cambié algunas instrucciones para que fuera mas legible.
 
-Nos damos cuenta que tenemos un switch-case que se dirigue a otras funciones, segun la opcion del usuario. Veamos que tiene la función ```add_user()```
+Nos damos cuenta que tenemos solicita una opcion por scanf, y ejecuta una funcion en el switch-case segun la opcion del usuario. Mas alla que eso no hay nada mas importante a destacar.
+
+Veamos que hay en la función ```add_user()```
 
 ## add_user()
 
@@ -125,9 +127,9 @@ void add_user(void)
 }
 ```
 
-Esta funcion pide que el index del username (```idx_cantidate```) no sea mayor a 5 o que tampoco tenga mas de 20 caracteres (20 bytes) de largo. Posterior a eso, guarda el string segun la cantidad de bytes dados por el usuario. \
-Mas abajo tenemos algo interesante ya que se la funcion strcmp para comparar el string dado por el usuario con otro que dice "root", en caso de que estos sean iguales se retornaria 0, para luego llamar un syscall de exit en caso de que esto sea asi. \
-Podemos deducir que el string "root" es importante para este challenge, pero sigamos viendo que mas hay en el binario. 
+Esta funcion solicita al usuario que ingrese 3 datos, el index, un tamaño en bytes y un string. Aqui hay algo interesante y es que el string de username es guardado con la ayuda de una funcion ```malloc()```, es decir que estamos tocando memoria dinamica en el Heap al crear usuarios nuevos. 
+
+Despues de crearse el usuario se llama una funcion strcmp con los argumentos del string recien introducido y otro string "root". En caso de que no sepas, strcmp es una funcion de C que compara dos strings y determina si son iguales o no, en caso de si lo sean este retorna un 0. En resumidas cuentas, compara que tu string no haya sido "root" y si lo fuera, este terminaria llamando la syscall de exit para interrumpir la ejecucion del programa.
 
 Ahora veamos el codigo de ```add_password()```
 ## add_password()
@@ -167,7 +169,7 @@ void delete_user_and_password(void)
 }
 ```
 
-Este codigo es el mas importante de todos, ya que aqui reside el bug. Si te diste cuenta en el codigo previo, los strings son almacenados en el Heap y no en el Stack, esto lo sabemos porque se usa la funcion ```malloc()``` para el almacenamiento. En esta funcion, dicho bloque de memoria es liberado con la funcion ```free()```, pero no de la mejor manera.
+Este codigo es el mas importante de todos, ya que aqui reside el bug. Si te diste cuenta anteriormente, los strings son almacenados en el Heap y no en el Stack, esto lo sabemos porque se usa la funcion ```malloc()``` para el almacenamiento. En esta funcion, dicho bloque de memoria es liberado con la funcion ```free()```, pero no de la mejor manera.
 
 ## Ataque user-after-free.
 Expliquemos algo de ciencias computacionales. La funcion ```malloc()```, como explique mas arriba, es encargada de asignar espacio dinamico en la memoria Heap, lo interesante radica en que malloc usa la estructura de datos **circular linked list**, por ende, si tenemos dos datos dentro de la lista, y queremos eliminar el index 0, el que lo sigue pasaria al index que fue eliminado.
